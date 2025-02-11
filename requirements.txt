@@ -1,3 +1,5 @@
 mace-torch
 torch-dftd
 statsmodels
+ase
+seaborn

@@ -1,0 +1,40 @@
+# bonds
+bond_style      harmonic
+bond_coeff      1 14.7437953 1.09 # H -C1
+bond_coeff      2 13.7464209 1.51 # C1-C2
+bond_coeff      3 14.7437953 1.08 # H -C2
+bond_coeff      4 23.806893 1.34 # C2-C2
+bond_coeff      5 11.6215798 1.529 # C1-C1
+
+# angles
+angle_style      harmonic
+angle_coeff      1 1.4310154 107.8 # H -C1-H
+angle_coeff      2 1.5177436 109.5 # C2-C1-H
+angle_coeff      3 1.5177436 120.0 # C2-C2-H
+angle_coeff      4 1.5177436 117.0 # C1-C2-H
+angle_coeff      5 3.0354873 124.0 # C1-C2-C2
+angle_coeff      6 3.0354873 130.0 # C1-C2-C1
+angle_coeff      7 1.6261539 110.7 # H -C1-C1
+angle_coeff      8 2.7319385 111.1 # C1-C1-C2
+
+# dihedrals
+dihedral_style      opls
+dihedral_coeff      1 0.0 0.0 0.0137898 0.0 # H -C1-C2-H
+dihedral_coeff      2 0.0 0.0 -0.0161314 0.0 # H -C1-C2-C2
+dihedral_coeff      3 0.0 0.6070975 0.0 0.0 # H -C2-C2-C1
+dihedral_coeff      4 0.0 0.6070975 0.0 0.0 # C1-C2-C2-C1
+dihedral_coeff      5 0.0 0.0 0.0130092 0.0 # C1-C2-C1-H
+dihedral_coeff      6 0.1221567 -0.0073285 0.0235467 0.0 # C1-C1-C2-C1
+dihedral_coeff      7 0.015004 0.0175625 -0.0392011 0.0 # C1-C1-C2-C2
+dihedral_coeff      8 0.0 0.0 0.0130092 0.0 # H -C1-C1-H
+dihedral_coeff      9 0.0 0.0 0.0158713 0.0 # C2-C1-C1-H
+dihedral_coeff     10 0.0563733 -0.0086728 0.0086728 0.0 # C2-C1-C1-C2
+dihedral_coeff     11 0.0 -0.3469128 0.0 0.0 # H -C2-C1-C1
+
+# L-J parameters
+pair_style lj/cut/coul/cut 12.0 12.0
+special_bonds lj/coul 0.0 0.0 0.5
+pair_coeff 1 1 0.002862 3.5 # C1
+pair_coeff 2 2 0.0032957 3.55 # C2
+pair_coeff 3 3 0.0013009 2.5 # H
+pair_modify shift yes mix geometric

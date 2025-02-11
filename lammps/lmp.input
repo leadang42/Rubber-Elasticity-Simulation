@@ -1,0 +1,102 @@
+# length between chain ends
+variable        L equal 170
+
+# temperature in K
+variable        temp equal 700
+
+# number of steps over which to stretch polymer from the initial state to length L
+variable        Nstretch equal 1e4
+
+# number of extra steps before data collection is started
+variable        Nequilib equal 0
+
+# number of steps during which data is collected
+variable        Nrun equal 1e4
+
+# number of steps between force sample collection
+variable        tsamp equal 10
+
+# number of steps between dumping coordinates
+variable        tdump equal 1000
+
+#####################################
+# Do not change settings below this
+#####################################
+
+# number of monomers in chain (needs to match lmp.data file)
+variable        Nmonomers equal 50
+
+# identity of endpoint atoms
+variable        head_id equal 2
+variable        tail_id equal 5+(v_Nmonomers-1)*13
+
+
+units           metal
+atom_style      full
+boundary        f f f
+timestep        0.001
+
+read_data       lmp.data
+include         lmp.param
+
+log             lmp${L}.log
+thermo          ${tsamp}
+thermo_style    custom step temp pe
+dump            write_traj all xyz ${tdump} lmp${L}.xyz
+dump_modify     write_traj sort id element C C H
+
+group           head_atom id ${head_id}
+group           tail_atom id ${tail_id}
+
+#----------------------------------------------#
+#           stretching to target L             #
+#----------------------------------------------#
+
+variable        xh  equal x[${head_id}]
+variable        yh  equal y[${head_id}]
+variable        zh  equal z[${head_id}]
+variable        xt  equal x[${tail_id}]
+variable        yt  equal y[${tail_id}]
+variable        zt  equal z[${tail_id}]
+variable        vxh equal ((v_xt-v_xh)-v_L)/(2*v_Nstretch*0.001)
+variable        vyh equal (v_yt-v_yh)/(2*v_Nstretch*0.001)
+variable        vzh equal (v_zt-v_zh)/(2*v_Nstretch*0.001)
+variable        vxt equal -v_vxh
+variable        vyt equal -v_vyh
+variable        vzt equal -v_vzh
+
+fix             run_traj all nvt temp ${temp} ${temp} 0.1
+fix             move_head head_atom move linear ${vxh} ${vyh} ${vzh}
+fix             move_tail tail_atom move linear ${vxt} ${vyt} ${vzt}
+run             ${Nstretch}
+unfix           move_head
+unfix           move_tail
+
+print           "head atom coordinates: ${xh} ${yh} ${zh}"
+print           "tail atom coordinates: ${xt} ${yt} ${zt}"
+
+#----------------------------------------------#
+#            equilibrating system              #
+#----------------------------------------------#
+
+set             atom ${head_id} vx 0.0 vy 0.0 vz 0.0
+set             atom ${tail_id} vx 0.0 vy 0.0 vz 0.0
+
+fix             store_frcs all store/force
+fix             fix_head head_atom setforce 0.0 0.0 0.0
+fix             fix_tail tail_atom setforce 0.0 0.0 0.0
+run             ${Nequilib}
+
+#----------------------------------------------#
+#               production run                 #
+#----------------------------------------------#
+
+variable        fxh equal f_store_frcs[${head_id}][1]
+variable        fyh equal f_store_frcs[${head_id}][2]
+variable        fzh equal f_store_frcs[${head_id}][3]
+variable        fxt equal f_store_frcs[${tail_id}][1]
+variable        fyt equal f_store_frcs[${tail_id}][2]
+variable        fzt equal f_store_frcs[${tail_id}][3]
+
+fix             log_frcs all print ${tsamp} "${fxh} ${fyh} ${fzh} ${fxt} ${fyt} ${fzt} ${xh} ${xt}" file lmp${L}.forces screen no
+run             ${Nrun}
