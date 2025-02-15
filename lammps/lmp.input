@@ -1,17 +1,17 @@
 # length between chain ends
-variable        L equal 170
+variable        L equal ${Lval}
 
 # temperature in K
 variable        temp equal 700
 
 # number of steps over which to stretch polymer from the initial state to length L
-variable        Nstretch equal 1e4
+variable        Nstretch equal 1e5                                                      ### Maybe test 1e5 ###
 
 # number of extra steps before data collection is started
-variable        Nequilib equal 0
+variable        Nequilib equal 5000
 
 # number of steps during which data is collected
-variable        Nrun equal 1e4
+variable        Nrun equal 1e6
 
 # number of steps between force sample collection
 variable        tsamp equal 10
@@ -27,8 +27,8 @@ variable        tdump equal 1000
 variable        Nmonomers equal 50
 
 # identity of endpoint atoms
-variable        head_id equal 2
-variable        tail_id equal 5+(v_Nmonomers-1)*13
+variable        head_id equal 2                      ### HEAD ID 2 ###
+variable        tail_id equal 5+(v_Nmonomers-1)*13   ### TAIL ID 642 ###
 
 
 units           metal
@@ -65,7 +65,7 @@ variable        vxt equal -v_vxh
 variable        vyt equal -v_vyh
 variable        vzt equal -v_vzh
 
-fix             run_traj all nvt temp ${temp} ${temp} 0.1
+fix             run_traj all nvt temp ${temp} ${temp} 0.1               ### By default, fix nvt in LAMMPS uses the Velocity Verlet algorithm with a Nosé-Hoover thermostat.
 fix             move_head head_atom move linear ${vxh} ${vyh} ${vzh}
 fix             move_tail tail_atom move linear ${vxt} ${vyt} ${vzt}
 run             ${Nstretch}
@@ -83,8 +83,8 @@ set             atom ${head_id} vx 0.0 vy 0.0 vz 0.0
 set             atom ${tail_id} vx 0.0 vy 0.0 vz 0.0
 
 fix             store_frcs all store/force
-fix             fix_head head_atom setforce 0.0 0.0 0.0
-fix             fix_tail tail_atom setforce 0.0 0.0 0.0
+fix             fix_head head_atom setforce 0.0 0.0 0.0 # Making head immobile -> No xh change
+fix             fix_tail tail_atom setforce 0.0 0.0 0.0 # Making tail immobile -> No xt change
 run             ${Nequilib}
 
 #----------------------------------------------#

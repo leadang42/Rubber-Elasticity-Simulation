@@ -1,7 +1,7 @@
 from ase.data.pubchem import pubchem_atoms_search
 from mace.calculators import mace_off
-from src.simulation import SimulationConfig, MolecularDynamics
-from src.analysis import analyze_distances, analyze_stretches, get_direction_vector
+from simulation import SimulationConfig, MolecularDynamics
+from analysis import analyze_distances, analyze_stretches, get_direction_vector
 
 def exercise_1():
     isoprene = pubchem_atoms_search(smiles="CC=C(C)C")

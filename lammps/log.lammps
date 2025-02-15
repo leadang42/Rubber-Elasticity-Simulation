@@ -1,18 +1,20 @@
-LAMMPS (29 Aug 2024 - Update 1)
+LAMMPS (30 Jul 2021)
+  using 4 OpenMP thread(s) per MPI task
 # length between chain ends
-variable        L equal 170
+variable        L equal ${Lval}
+variable        L equal 500
 
 # temperature in K
 variable        temp equal 700
 
 # number of steps over which to stretch polymer from the initial state to length L
-variable        Nstretch equal 1e4
+variable        Nstretch equal 1e5                                                      ### Maybe test 1e5 ###
 
 # number of extra steps before data collection is started
-variable        Nequilib equal 0
+variable        Nequilib equal 5000
 
 # number of steps during which data is collected
-variable        Nrun equal 1e4
+variable        Nrun equal 1e6
 
 # number of steps between force sample collection
 variable        tsamp equal 10
@@ -28,8 +30,8 @@ variable        tdump equal 1000
 variable        Nmonomers equal 50
 
 # identity of endpoint atoms
-variable        head_id equal 2
-variable        tail_id equal 5+(v_Nmonomers-1)*13
+variable        head_id equal 2                      ### HEAD ID 2 ###
+variable        tail_id equal 5+(v_Nmonomers-1)*13   ### TAIL ID 642 ###
 
 
 units           metal
@@ -39,7 +41,7 @@ timestep        0.001
 
 read_data       lmp.data
 Reading data file ...
-  orthogonal box = (0 0 0) to (750 750 750)
+  orthogonal box = (0.0000000 0.0000000 0.0000000) to (750.00000 750.00000 750.00000)
   1 by 1 by 1 MPI processor grid
   reading atoms ...
   652 atoms
@@ -51,8 +53,6 @@ Reading data file ...
   6 = max angles/atom
   scanning dihedrals ...
   12 = max dihedrals/atom
-  orthogonal box = (0 0 0) to (750 750 750)
-  1 by 1 by 1 MPI processor grid
   reading bonds ...
   651 bonds
   reading angles ...
@@ -66,8 +66,8 @@ Finding 1-2 1-3 1-4 neighbors ...
      8 = max # of 1-3 neighbors
     14 = max # of 1-4 neighbors
     17 = max # of special neighbors
-  special bonds CPU = 0.001 seconds
-  read_data CPU = 0.017 seconds
+  special bonds CPU = 0.004 seconds
+  read_data CPU = 0.048 seconds
 include         lmp.param
 # bonds
 bond_style      harmonic
@@ -112,11 +112,11 @@ Finding 1-2 1-3 1-4 neighbors ...
      8 = max # of 1-3 neighbors
     14 = max # of 1-4 neighbors
     17 = max # of special neighbors
-  special bonds CPU = 0.000 seconds
+  special bonds CPU = 0.001 seconds
 pair_coeff 1 1 0.002862 3.5 # C1
 pair_coeff 2 2 0.0032957 3.55 # C2
 pair_coeff 3 3 0.0013009 2.5 # H
 pair_modify shift yes mix geometric
 
 log             lmp${L}.log
-log             lmp170.log
+log             lmp500.log
