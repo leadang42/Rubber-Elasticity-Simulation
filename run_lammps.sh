@@ -1,4 +1,4 @@
-for Lval in $(seq 150 50 500); do
+for Lval in $(seq 150 10 200); do
     docker run --rm \
         --platform linux/amd64 \
         -v "$(pwd)/lammps":/data \

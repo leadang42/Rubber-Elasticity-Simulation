@@ -4,6 +4,7 @@ import os
 import yaml
 import shutil
 import matplotlib.pyplot as plt
+import emcee
 
 # STORE SIMULATION DATA #
 def store_config(L):
@@ -36,7 +37,7 @@ def store_config(L):
     with open(output_path, 'w') as f:
         yaml.dump(values, f, default_flow_style=False)
     
-    return exp_id
+    return exp_id, values
    
 def store_outputs(L, exp_id):
     
@@ -102,9 +103,12 @@ def jacobs_tau_int(ac, c=6.0, tol=0.01, max_iter=10):
         if abs(new_tau - tau_est) / tau_est < tol:
             break
         tau_est = new_tau
+    
     return tau_est
 
 def integrated_corr_time(acf):
+    
+    # TODO adjust to step size
     
     if not np.isclose(acf[0], 1.0):
         raise ValueError("Autocorrelation function must be normalized to 1.0 at lag 0.")
@@ -130,13 +134,48 @@ def integrated_corr_time(acf):
 
     return tau_int  
 
+# LECTURE CALCULATIONS #
+def acf(force_data):
+    N = len(force_data)
+    mean_force = np.mean(force_data)
+    max_k = N // 4  # Only use first quarter for reliable statistics
+    
+    # Compute unnormalized autocorrelation
+    acf = np.zeros(max_k)
+    for k in range(max_k):
+        sum_corr = 0
+        for i in range(N - k):
+            sum_corr += (force_data[i] - mean_force) * (force_data[i + k] - mean_force)
+        acf[k] = sum_corr / (N - k)
+    
+    # Normalize
+    normalized_acf = acf / acf[0]
+    
+    return normalized_acf
+
+def tau(acf, tsamp=10):
+    
+    # Calculate tau and convert to simulation steps
+    tau = (1 + 2 * np.sum(acf[1:])) * tsamp
+    
+    return tau
+    
+# LECTURE CALCULATIONS #
+def emcee_acf(x):
+    return emcee.autocorr.function_1d(x)
+
+def emcee_tau(x, tsamp):
+    tau_samples = emcee.autocorr.integrated_time(x, c=5, tol=50, quiet=False, has_walkers=False)[0]  # One value in numpy array
+    tau_steps = tau_samples * tsamp
+    
+    return tau_steps
+
 # ANALYZE DATA # 
 def plot_acf(acf, tau_int, L, exp_id):
     
     acf = acf[:1000]  # Limit to first 100 points
     
     t = np.arange(len(acf))
-    
     fig, ax = plt.subplots(figsize=(10, 6))
     
     ax.plot(t, acf, 'b-', label='Autocorrelation')
@@ -167,7 +206,7 @@ def plot_acf(acf, tau_int, L, exp_id):
     
     return fig
 
-def process_forces(L, exp_id):
+def process_forces(L, exp_id, tsamp):
     
     sim_id = f"l{L}_{exp_id}"
     
@@ -178,20 +217,27 @@ def process_forces(L, exp_id):
     fxh, fxt = forces[:, 0], forces[:, 3] 
     restoring_forces = fxh - fxt
     
-    # Analyze restoring forces
     mean_force = np.mean(restoring_forces)
     var_force = np.var(restoring_forces)
-    acf = autocorrelation(restoring_forces)
-    tau_int = integrated_corr_time(acf)
+    std_force = np.sqrt(var_force)
+    
+    # Analyze acf and tau
+    #acf = autocorrelation(restoring_forces)
+    #tau_int = jacobs_tau_int(acf)
+    #tau_int = integrated_corr_time(acf) * 10 # For sampling
+    
+    acf = emcee_acf(restoring_forces)
+    tau_int = emcee_tau(restoring_forces, tsamp=tsamp)
     
     plot_acf(acf, tau_int, L, exp_id)
     
     # Calculate effective number of independent samples
     N = len(restoring_forces)
-    N_eff = N / tau_int
+    N_eff = N / (2 * tau_int)
     
     # Calculate error bar using error ~ std(A)/sqrt(N_eff)
-    error_bar = np.sqrt(var_force / N_eff)
+    #error_bar = std_force / np.sqrt(N_eff)
+    error_bar = std_force * np.sqrt((2 * tau_int) / N)
     
     # Create results dictionary
     results = {
@@ -273,21 +319,22 @@ def plot_mean_forces(exp_id):
     return fig
 
 # AGGREGATE FUNCTION #
-def process_experiment(Ls, save_results=True, save_forces=True, exp_id=None):
+def process_experiment(Ls, save_results=True, save_forces=True, exp_id=None, tsamp=10):
     print(f"Processing experiment for {Ls}")
     
     for L in Ls:
         
-        print(f"\n###################\nDisplacement L={L}:")
+        print(f"\nDisplacement L={L}:")
         
         if save_results:
-            exp_id = store_config(L)
+            exp_id, values = store_config(L)
+            tsamp = values["tsamp"]
             store_outputs(L, exp_id)
             
             print(f"Stored configuration and outputs")
         
         if save_forces:
-            results = process_forces(L, exp_id)
+            results = process_forces(L, exp_id, tsamp)
             
             print(f"Mean force: {results['mean_force']:.6f} ± {results['error_bar']:.6f}")
             print(f"Integrated correlation time: {results['tau_int']:.2f}")
@@ -296,4 +343,7 @@ def process_experiment(Ls, save_results=True, save_forces=True, exp_id=None):
     return exp_id
 
 if __name__ == "__main__":
-    process_experiment(Ls=[150, 200, 250, 300, 350, 400, 450, 500])
+    
+    #process_experiment(Ls=[L for L in range(150, 280, 5)], save_results=False, save_forces=True, exp_id="t700_ns10000_ne5000_nr1000000_ts10_td1000",)
+    process_experiment(Ls=[L for L in range(150, 290, 10)])
+    #plot_mean_forces("t700_ns100000_ne50000_nr1000000_ts20_td1000")

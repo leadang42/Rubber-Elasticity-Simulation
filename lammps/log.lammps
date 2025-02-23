@@ -2,25 +2,25 @@ LAMMPS (30 Jul 2021)
   using 4 OpenMP thread(s) per MPI task
 # length between chain ends
 variable        L equal ${Lval}
-variable        L equal 500
+variable        L equal 200
 
 # temperature in K
 variable        temp equal 700
 
 # number of steps over which to stretch polymer from the initial state to length L
-variable        Nstretch equal 1e5                                                      ### Maybe test 1e5 ###
+variable        Nstretch equal 1e4                                                      ### Maybe test 1e5 ###
 
 # number of extra steps before data collection is started
-variable        Nequilib equal 5000
+variable        Nequilib equal 10000
 
 # number of steps during which data is collected
-variable        Nrun equal 1e6
+variable        Nrun equal 1e6                                  # 1e5
 
 # number of steps between force sample collection
-variable        tsamp equal 10
+variable        tsamp equal 20                          # 100
 
 # number of steps between dumping coordinates
-variable        tdump equal 1000
+variable        tdump equal 1000                    # 100
 
 #####################################
 # Do not change settings below this
@@ -67,7 +67,7 @@ Finding 1-2 1-3 1-4 neighbors ...
     14 = max # of 1-4 neighbors
     17 = max # of special neighbors
   special bonds CPU = 0.004 seconds
-  read_data CPU = 0.048 seconds
+  read_data CPU = 0.046 seconds
 include         lmp.param
 # bonds
 bond_style      harmonic
@@ -119,4 +119,4 @@ pair_coeff 3 3 0.0013009 2.5 # H
 pair_modify shift yes mix geometric
 
 log             lmp${L}.log
-log             lmp500.log
+log             lmp200.log
