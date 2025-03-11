@@ -2,22 +2,22 @@
 variable        L equal ${Lval}
 
 # temperature in K
-variable        temp equal 700
+variable        temp equal 300
 
 # number of steps over which to stretch polymer from the initial state to length L
-variable        Nstretch equal 1e4                                                      ### Maybe test 1e5 ### 
+variable        Nstretch equal 1e5                                                   
 
 # number of extra steps before data collection is started
-variable        Nequilib equal 10000
+variable        Nequilib equal 1e6                               
 
 # number of steps during which data is collected
-variable        Nrun equal 1e6                                  # 1e5
+variable        Nrun equal 1500000                     
 
 # number of steps between force sample collection
-variable        tsamp equal 20                          # 100
+variable        tsamp equal 10                        
 
 # number of steps between dumping coordinates
-variable        tdump equal 1000                    # 100
+variable        tdump equal 1000                  
 
 #####################################
 # Do not change settings below this
