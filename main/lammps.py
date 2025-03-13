@@ -30,8 +30,8 @@ def parse_input_file(input_filepath="lammps/lmp.input"):
 
 def generate_ids(params, L):
     """Generate experiment and simulation IDs from parameters."""
-    values['L'] = L
-    exp_id = f"t{values['temp']}_ns{values['Nstretch']}_ne{values['Nequilib']}_nr{values['Nrun']}_ts{values['tsamp']}_td{values['tdump']}"
+    params['L'] = L
+    exp_id = f"t{params['temp']}_ns{params['Nstretch']}_ne{params['Nequilib']}_nr{params['Nrun']}_ts{params['tsamp']}_td{params['tdump']}"
     sim_id = f"l{L}_{exp_id}"
     return exp_id, sim_id
 
@@ -660,8 +660,7 @@ def analyze_exp(exp_id, tsamp, M, xlim_acf_anal, xlim_acf):
         
         # Process energy data 
         run_start = (params['Nstretch'] + params['Nequilib']) / params['tsamp']
-        
-        pot_energy = load_log(paths['log'])[:, 2]
+        pot_energy = load_log(paths['log'])[run_start:, 2]
         
         internal_energy = calculate_internal_energy(forces)
         mean_energy, std_energy, _ = compute_statistics(internal_energy)
