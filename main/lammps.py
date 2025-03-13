@@ -130,18 +130,10 @@ def get_experiment_tsamp(exp_id):
     return None
 
 
-# ===== ANALYSIS FUNCTIONS =====
-
 @lru_cache(maxsize=32)
 def load_forces(force_filepath):
     """Load force data from file with caching."""
     return np.loadtxt(force_filepath)
-
-
-def calculate_restoring_forces(forces):
-    """Calculate restoring forces from raw force data."""
-    fxh, fxt = forces[:, 0], forces[:, 3] 
-    return fxh - fxt
 
 
 @lru_cache(maxsize=32)
@@ -175,36 +167,12 @@ def load_log(log_filepath):
     return np.array(data) if data else np.empty((0, 3))
 
 
-def calculate_internal_energy(forces):
-    """Calculate internal energy from force and position data.
-    
-    Force file structure:
-    fxh, fyh, fzh, fxt, fyt, fzt, xh, xt
-    """
-    # Extract components from the forces array
-    fxh = forces[:, 0]
-    fyh = forces[:, 1]
-    fzh = forces[:, 2]
-    fxt = forces[:, 3]
-    fyt = forces[:, 4]
-    fzt = forces[:, 5]
-    xh = forces[:, 6]
-    xt = forces[:, 7]
-    
-    # Calculate displacement
-    dx = xt - xh
-    
-    # Calculate net force components
-    fx_net = fxh - fxt
-    fy_net = fyh - fyt
-    fz_net = fzh - fzt
-    
-    # Calculate internal energy (work done by forces)
-    # U = -F·dr (assuming only x-component is relevant for simplicity)
-    
-    internal_energy = -(fx_net * dx)
-    
-    return internal_energy
+# ===== ANALYSIS FUNCTIONS =====
+
+def calculate_restoring_forces(forces):
+    """Calculate restoring forces from raw force data."""
+    fxh, fxt = forces[:, 0], forces[:, 3] 
+    return fxh - fxt
 
 
 def compute_statistics(data):
@@ -251,20 +219,23 @@ def format_experiment_title(exp_id):
         nr = int(parts[3][2:])
         ts = int(parts[4][2:])
         
-        # Handle special case
-        if exp_id == "t700_ns10000_ne10000_nr1000000_ts20_td1000":
-            return "700K - Stretch 1e4 - Equil 1e4 - Prod 1e6 - Tsamp 20"
-        
         # Format scientific notation
         def format_sci(n):
             """Format number in scientific notation.
-            Examples: 10000 → 1e4, 50000 → 5e4, 500000 → 5e5"""
+            Examples: 10000 → 1e4, 50000 → 5e4, 150000 → 1.5e5"""
             n_str = str(int(n))  # Convert to int first to handle potential floats
             
             if n >= 1000:
-                first_digit = n_str[0]
                 power = len(n_str) - 1
-                return f"{first_digit}e{power}"
+                # For numbers like 1500000 (1.5e6)
+                if n_str[0] == '1' and len(n_str) > 1 and n_str[1] != '0':
+                    return f"1.{n_str[1]}e{power}"
+                # For numbers like 500000 (5e5)
+                elif len(n_str) > 1:
+                    return f"{n_str[0]}e{power}"
+                # For numbers like 100000 (1e5)
+                else:
+                    return f"1e{power}"
                 
             return n_str
         
@@ -327,7 +298,7 @@ def plot_autocorrelation(acf, M, xlim, output_path):
     # Add vertical line for M cutoff 
     #if M < len(beg_acf):
     #    ax.axvline(x=M, color=viridis(0.8), linestyle='--', label=f'Cutoff M={M}')
-    #    ax.plot(M, beg_acf[M], 'o', color=viridis(0.8), markersize=6)
+    #    ax.plot(M, beg_acf[M], 'o', color=viridis(0.8), markersize=5)
     
     ax.set_xlabel(rf'Time lag $\tau$', fontsize=12)
     ax.set_ylabel(rf'Autocorrelation $\rho(\tau)$', fontsize=12)
@@ -367,7 +338,7 @@ def plot_autocorrelation_halfs(x, M, xlim, output_path):
     
     #if M < len(acf_first):
     #    ax.axvline(x=M, color=viridis(0.8), linestyle='--', label=f'Cutoff M={M}')
-    #   ax.plot(M, acf_first[M], 'o', color=viridis(0.8), markersize=6)
+    #   ax.plot(M, acf_first[M], 'o', color=viridis(0.8), markersize=5)
         
     ax.set_xlabel(rf'Time lag $\tau$', fontsize=12)
     ax.set_ylabel(rf'Autocorrelation $\rho(\tau)$', fontsize=12)
@@ -383,209 +354,131 @@ def plot_autocorrelation_halfs(x, M, xlim, output_path):
     plt.close(fig)
 
 
-def plot_mean_forces(exp_id):
-    """Generate and save mean forces vs displacement plot."""
-    print(f"-> Generating mean forces plot for experiment: {exp_id}\n")
+def plot_experiment_data(exp_id, plot_type="force_plot"):
+    """Generate experiment plot (force, energy, or combined)."""
+    
+    print(f"-> Generating {plot_type.replace('_', ' ')} for experiment: {exp_id}\n")
+    
     sim_dirs = find_simulation_dirs(exp_id)
+    paths = get_file_paths(exp_id, "", 0)
     
-    if not sim_dirs:
-        raise ValueError(f"No data found for experiment: {exp_id}")
+    force_color = viridis(0.1)
+    force_error_color = viridis(0.3)
+    energy_color = viridis(0.7)
+    energy_error_color = viridis(0.8)
     
-    # Collect data from all simulations
-    data = []
-    for L, sim_dir in sim_dirs:
-        yaml_path = os.path.join(sim_dir, 'force_analysis.yaml')
-        if os.path.exists(yaml_path):
-            with open(yaml_path, 'r') as f:
-                results = yaml.safe_load(f)
-                data.append((
-                    results['displacement'],
-                    results['mean_force'],
-                    results['error_bar']
-                ))
-    
-    if not data:
-        raise ValueError(f"No force analysis data found for experiment: {exp_id}")
-    
-    # Sort by displacement
-    data.sort(key=lambda x: x[0])
-    displacements, mean_forces, error_bars = zip(*data)
-    
-    # Create the plot
-    fig, ax = plt.subplots(figsize=(7, 6))
-    
-    # Use viridis colors for errorbar plot
-    ax.errorbar(
-        displacements, mean_forces, yerr=error_bars, 
-        fmt='o-', capsize=5, capthick=1.5, 
-        elinewidth=1.5, markersize=8,
-        color=viridis(0.5), ecolor=viridis(0.7), 
-        mfc=viridis(0.3), mec=viridis(0.7),
-        label='Mean Force'
-    )
-    
-    ax.set_xlabel('Displacement (L)', fontsize=12)
-    ax.set_ylabel('Mean Restoring Force', fontsize=12)
-    ax.set_title(f'Force vs Displacement\n{format_experiment_title(exp_id)}', fontsize=14)
-    ax.grid(True, linestyle='--', alpha=0.7)
-    ax.legend()
-    
-    plt.tight_layout()
-    
-    paths = get_file_paths(exp_id, "", 0)  # L=0 not used here
-    plt.savefig(paths['force_plot'], dpi=300, bbox_inches='tight')
-    plt.close(fig)
-    
-    return fig
-
-
-def plot_mean_energy(exp_id):
-    """Generate and save mean internal energy vs displacement plot."""
-    print(f"-> Generating mean internal energy plot for experiment: {exp_id}\n")
-    sim_dirs = find_simulation_dirs(exp_id)
-    
-    if not sim_dirs:
-        raise ValueError(f"No data found for experiment: {exp_id}")
-    
-    # Collect data from all simulations
-    data = []
-    for L, sim_dir in sim_dirs:
-        yaml_path = os.path.join(sim_dir, 'energy_analysis.yaml')
-        if os.path.exists(yaml_path):
-            with open(yaml_path, 'r') as f:
-                results = yaml.safe_load(f)
-                data.append((
-                    results['displacement'],
-                    results['mean_energy'],
-                    results['error_bar']
-                ))
-    
-    if not data:
-        raise ValueError(f"No energy analysis data found for experiment: {exp_id}")
-    
-    # Sort by displacement
-    data.sort(key=lambda x: x[0])
-    displacements, mean_energies, error_bars = zip(*data)
-    
-    # Create the plot
-    fig, ax = plt.subplots(figsize=(7, 6))
-    
-    # Use viridis colors for errorbar plot (using a different shade than the force plot)
-    ax.errorbar(
-        displacements, mean_energies, yerr=error_bars, 
-        fmt='o-', capsize=5, capthick=1.5, 
-        elinewidth=1.5, markersize=8,
-        color=viridis(0.8), ecolor=viridis(0.9), 
-        mfc=viridis(0.6), mec=viridis(0.9),
-        label='Mean Internal Energy'
-    )
-    
-    ax.set_xlabel('Displacement (L)', fontsize=12)
-    ax.set_ylabel('Mean Internal Energy', fontsize=12)
-    ax.set_title(f'Internal Energy vs Displacement\n{format_experiment_title(exp_id)}', fontsize=14)
-    ax.grid(True, linestyle='--', alpha=0.7)
-    ax.legend()
-    
-    plt.tight_layout()
-    
-    paths = get_file_paths(exp_id, "", 0)  # L=0 not used here
-    plt.savefig(paths['energy_plot'], dpi=300, bbox_inches='tight')
-    plt.close(fig)
-    
-    return fig
-
-
-def plot_combined_force_energy(exp_id):
-    """Generate and save a combined plot with both mean force and energy vs displacement."""
-    print(f"-> Generating combined force and energy plot for experiment: {exp_id}\n")
-    sim_dirs = find_simulation_dirs(exp_id)
-    
-    if not sim_dirs:
-        raise ValueError(f"No data found for experiment: {exp_id}")
-    
-    # Collect force data
+    # Collect force data if needed
     force_data = []
-    for L, sim_dir in sim_dirs:
-        yaml_path = os.path.join(sim_dir, 'force_analysis.yaml')
-        if os.path.exists(yaml_path):
-            with open(yaml_path, 'r') as f:
-                results = yaml.safe_load(f)
-                force_data.append((
-                    results['displacement'],
-                    results['mean_force'],
-                    results['error_bar']
-                ))
+    if plot_type in ['force_plot', 'combined_plot']:
+        for L, sim_dir in sim_dirs:
+            yaml_path = os.path.join(sim_dir, 'force_analysis.yaml')
+            if os.path.exists(yaml_path):
+                with open(yaml_path, 'r') as f:
+                    results = yaml.safe_load(f)
+                    force_data.append((
+                        results['displacement'],
+                        results['mean_force'],
+                        results['error_bar']
+                    ))
+        force_data.sort(key=lambda x: x[0])
     
-    # Collect energy data
+    # Collect energy data if needed
     energy_data = []
-    for L, sim_dir in sim_dirs:
-        yaml_path = os.path.join(sim_dir, 'energy_analysis.yaml')
-        if os.path.exists(yaml_path):
-            with open(yaml_path, 'r') as f:
-                results = yaml.safe_load(f)
-                energy_data.append((
-                    results['displacement'],
-                    results['mean_energy'],
-                    results['error_bar']
-                ))
+    if plot_type in ['energy_plot', 'combined_plot']:
+        for L, sim_dir in sim_dirs:
+            yaml_path = os.path.join(sim_dir, 'energy_analysis.yaml')
+            if os.path.exists(yaml_path):
+                with open(yaml_path, 'r') as f:
+                    results = yaml.safe_load(f)
+                    energy_data.append((
+                        results['displacement'],
+                        results['mean_energy'],
+                        results['error_bar']
+                    ))
+        energy_data.sort(key=lambda x: x[0])
     
-    if not force_data or not energy_data:
-        raise ValueError(f"No complete analysis data found for experiment: {exp_id}")
+    # Create plot based on type
+    if plot_type == 'combined_plot':
+        
+        force_displacements, mean_forces, force_error_bars = zip(*force_data)
+        energy_displacements, mean_energies, energy_error_bars = zip(*energy_data)
+        
+        fig, ax1 = plt.subplots(figsize=(7, 7))
+        
+        ax1.errorbar(
+            force_displacements, mean_forces, yerr=force_error_bars, 
+            fmt='o-', capsize=5, capthick=1.5, elinewidth=1.5, markersize=5,
+            color=force_color, ecolor=force_error_color, mfc=force_color, mec=force_error_color,
+            label='Mean Restoring Force'
+        )
+        
+        ax1.set_xlabel('Displacement [Å]', fontsize=12)
+        ax1.set_ylabel('Mean Restoring Force [eV/Å]', fontsize=12, color=force_color)
+        ax1.tick_params(axis='y', labelcolor=force_color)
+        ax1.grid(True, linestyle='--', alpha=0.4)
+        
+        # Energy plot (right y-axis)
+        ax2 = ax1.twinx()
+
+        ax2.errorbar(
+            energy_displacements, mean_energies, yerr=energy_error_bars, 
+            fmt='s--', capsize=5, capthick=1.5, elinewidth=1.5, markersize=5,
+            color=energy_color, ecolor=energy_error_color, mfc=energy_color, mec=energy_error_color,
+            label='Mean Internal Energy'
+        )
+        
+        ax2.set_ylabel('Mean Internal Energy [eV]', fontsize=12, color=energy_color)
+        ax2.tick_params(axis='y', labelcolor=energy_color)
+        
+        # Title and legend
+        plt.title(f'Force and Internal Energy vs Displacement\n{format_experiment_title(exp_id)}', fontsize=14)
+        lines1, labels1 = ax1.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines1 + lines2, labels1 + labels2, loc='best')
+        
+        save_path = paths['combined_plot']
+        
+    else:
+        # Create individual plot (force or energy)
+        fig, ax = plt.subplots(figsize=(7, 7))
+        
+        if plot_type == 'force_plot':
+            displacements, mean_values, error_bars = zip(*force_data)
+            
+            ax.errorbar(
+                displacements, mean_values, yerr=error_bars, 
+                fmt='o-', capsize=5, capthick=1.5, elinewidth=1.5, markersize=5,
+                color=force_color, ecolor=force_error_color, mfc=force_color, mec=force_error_color,
+                label='Mean Force'
+            )
+            
+            y_label = 'Mean Restoring Force [eV/Å]'
+            title_prefix = 'Force'
+            save_path = paths['force_plot']
+            
+        elif plot_type == 'energy_plot':
+            displacements, mean_values, error_bars = zip(*energy_data)
+            
+            ax.errorbar(
+                displacements, mean_values, yerr=error_bars, 
+                fmt='o-', capsize=5, capthick=1.5, elinewidth=1.5, markersize=5,
+                color=energy_color, ecolor=energy_error_color, mfc=energy_color, mec=energy_error_color,
+                label='Mean Internal Energy'
+            )
+            
+            y_label = 'Mean Internal Energy [eV]'
+            title_prefix = 'Internal Energy'
+            save_path = paths['energy_plot']
+        
+        # Set labels and title
+        ax.set_xlabel('Displacement [Å]', fontsize=12)
+        ax.set_ylabel(y_label, fontsize=12)
+        ax.set_title(f'{title_prefix} vs Displacement\n{format_experiment_title(exp_id)}', fontsize=14)
+        ax.grid(True, linestyle='--', alpha=0.7)
     
-    # Sort by displacement
-    force_data.sort(key=lambda x: x[0])
-    energy_data.sort(key=lambda x: x[0])
-    
-    # Unpack data
-    force_displacements, mean_forces, force_error_bars = zip(*force_data)
-    energy_displacements, mean_energies, energy_error_bars = zip(*energy_data)
-    
-    # Create the plot with two y-axes
-    fig, ax1 = plt.subplots(figsize=(10, 7))
-    
-    # Force plot (left y-axis)
-    color1 = viridis(0.3)
-    ax1.errorbar(
-        force_displacements, mean_forces, yerr=force_error_bars, 
-        fmt='o-', capsize=5, capthick=1.5, 
-        elinewidth=1.5, markersize=8,
-        color=color1, ecolor=viridis(0.4), 
-        mfc=viridis(0.2), mec=viridis(0.4),
-        label='Mean Restoring Force'
-    )
-    
-    ax1.set_xlabel('Displacement (L)', fontsize=12)
-    ax1.set_ylabel('Mean Restoring Force', fontsize=12, color=color1)
-    ax1.tick_params(axis='y', labelcolor=color1)
-    ax1.grid(True, linestyle='--', alpha=0.4)
-    
-    # Energy plot (right y-axis)
-    ax2 = ax1.twinx()
-    color2 = viridis(0.8)
-    ax2.errorbar(
-        energy_displacements, mean_energies, yerr=energy_error_bars, 
-        fmt='s--', capsize=5, capthick=1.5, 
-        elinewidth=1.5, markersize=8,
-        color=color2, ecolor=viridis(0.9), 
-        mfc=viridis(0.7), mec=viridis(0.9),
-        label='Mean Internal Energy'
-    )
-    
-    ax2.set_ylabel('Mean Internal Energy', fontsize=12, color=color2)
-    ax2.tick_params(axis='y', labelcolor=color2)
-    
-    # Title and legends
-    plt.title(f'Force and Internal Energy vs Displacement\n{format_experiment_title(exp_id)}', fontsize=14)
-    
-    # Combine legends from both axes
-    lines1, labels1 = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2, labels1 + labels2, loc='best')
-    
+    # Save the plot
     plt.tight_layout()
-    
-    paths = get_file_paths(exp_id, "", 0)  # L=0 not used here
-    plt.savefig(paths['combined_plot'], dpi=300, bbox_inches='tight')
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close(fig)
     
     return fig
@@ -615,12 +508,12 @@ def analyze_exp(exp_id, tsamp, M, xlim_acf_anal, xlim_acf):
     for L, _ in sim_dirs:
         
         params = {
-            'temp': exp_id.split('_')[0][1:], 
-            'Nstretch': exp_id.split('_')[1][2:], 
-            'Nequilib': exp_id.split('_')[2][2:], 
-            'Nrun': exp_id.split('_')[3][2:], 
-            'tsamp': exp_id.split('_')[4][2:], 
-            'tdump': exp_id.split('_')[5][2:], 
+            'temp': int(exp_id.split('_')[0][1:]), 
+            'Nstretch': int(exp_id.split('_')[1][2:]), 
+            'Nequilib': int(exp_id.split('_')[2][2:]), 
+            'Nrun': int(exp_id.split('_')[3][2:]), 
+            'tsamp': int(exp_id.split('_')[4][2:]), 
+            'tdump': int(exp_id.split('_')[5][2:]), 
         }
         
         _, sim_id = generate_ids(params, L)
@@ -652,6 +545,7 @@ def analyze_exp(exp_id, tsamp, M, xlim_acf_anal, xlim_acf):
             yaml.dump(force_results, f, default_flow_style=False)
         
         print(f"-> Force Analysis for {L}:")
+        print(force_results)
         for key, value in force_results.items():
             if key in ["displacement"]:
                 continue
@@ -659,12 +553,11 @@ def analyze_exp(exp_id, tsamp, M, xlim_acf_anal, xlim_acf):
             
         
         # Process energy data 
-        run_start = (params['Nstretch'] + params['Nequilib']) / params['tsamp']
-        pot_energy = load_log(paths['log'])[run_start:, 2]
+        run_start = int((params['Nstretch'] + params['Nequilib']) / params['tsamp'])
+        energy = load_log(paths['log'])[run_start:, 2]
         
-        internal_energy = calculate_internal_energy(forces)
-        mean_energy, std_energy, _ = compute_statistics(internal_energy)
-        acf_energy = compute_autocorrelation(internal_energy)
+        mean_energy, std_energy, _ = compute_statistics(energy)
+        acf_energy = compute_autocorrelation(energy)
         tau_int_energy, _ = compute_tau_int(acf_energy, tsamp, M)
         N_eff_energy = N / (2 * tau_int_energy)
         error_bar_energy = np.sqrt((2 * tau_int_energy) / N) * std_energy
@@ -696,12 +589,12 @@ def analyze_exp(exp_id, tsamp, M, xlim_acf_anal, xlim_acf):
         plot_autocorrelation(acf_force, M, xlim_acf, paths['acf_plot'])
         plot_autocorrelation_halfs(restoring_forces, M, xlim_acf_anal, paths['acf_plot_halfs'])
         plot_force_time_series(restoring_forces, tsamp, paths['force_time_plot'])
-        plot_energy_time_series(internal_energy, tsamp, paths['energy_time_plot'])
+        plot_energy_time_series(energy, tsamp, paths['energy_time_plot'])
     
     # Create the summary plots for all L values
-    plot_mean_forces(exp_id)
-    plot_mean_energy(exp_id)
-    plot_combined_force_energy(exp_id)
+    plot_experiment_data(exp_id, 'force_plot')
+    plot_experiment_data(exp_id, 'energy_plot')
+    plot_experiment_data(exp_id, 'combined_plot')
 
 
 def analysis_300K():
@@ -738,15 +631,10 @@ def analysis_700K():
     
 if __name__ == "__main__":
     
-    # plot_mean_forces("t300_ns100000_ne100000_nr1500000_ts10_td1000")
-    store_exp([195])
-    analyze_exp("t300_ns100000_ne100000_nr1500000_ts10_td1000", tsamp=10, M=30, xlim_acf_anal=200, xlim_acf=500) 
+    plot_experiment_data("t300_ns100000_ne100000_nr1500000_ts10_td1000", plot_type="force_plot")
+    plot_experiment_data("t300_ns100000_ne100000_nr1500000_ts10_td1000", plot_type="energy_plot")
+    plot_experiment_data("t300_ns100000_ne100000_nr1500000_ts10_td1000", plot_type="combined_plot")
     
-    
+    # analyze_exp("t300_ns100000_ne100000_nr1500000_ts10_td1000", tsamp=10, M=30, xlim_acf_anal=200, xlim_acf=500) 
     # analyze_exp("t300_ns100000_ne100000_nr1500000_ts50_td1000", tsamp=50, M=100, xlim_acf_anal=200, xlim_acf=300) 
     
-    
-    # analyze_exp("t300_ns100000_ne100000_nr1500000_ts10_td1000", tsamp=10, M=30, xlim_acf_anal=200, xlim_acf=500) # at L=140 messy
-    
-    # analysis_300K()
-    # analysis_700K()

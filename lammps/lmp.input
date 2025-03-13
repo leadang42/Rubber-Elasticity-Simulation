@@ -2,7 +2,7 @@
 variable        L equal ${Lval}
 
 # temperature in K
-variable        temp equal 300
+variable        temp equal 700
 
 # number of steps over which to stretch polymer from the initial state to length L
 variable        Nstretch equal 1e5                                                   

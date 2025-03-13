@@ -1,4 +1,4 @@
-for Lval in 156; do
+for Lval in 140 145 150 155 160 165 170 175 180 185 190 195 200; do
     docker run --rm \
         --platform linux/amd64 \
         -v "$(pwd)/lammps":/data \
