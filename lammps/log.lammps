@@ -2,7 +2,7 @@ LAMMPS (30 Jul 2021)
   using 4 OpenMP thread(s) per MPI task
 # length between chain ends
 variable        L equal ${Lval}
-variable        L equal 200
+variable        L equal 156
 
 # temperature in K
 variable        temp equal 300
@@ -11,7 +11,7 @@ variable        temp equal 300
 variable        Nstretch equal 1e5
 
 # number of extra steps before data collection is started
-variable        Nequilib equal 1e6
+variable        Nequilib equal 1e5
 
 # number of steps during which data is collected
 variable        Nrun equal 1500000
@@ -67,7 +67,7 @@ Finding 1-2 1-3 1-4 neighbors ...
     14 = max # of 1-4 neighbors
     17 = max # of special neighbors
   special bonds CPU = 0.004 seconds
-  read_data CPU = 0.048 seconds
+  read_data CPU = 0.052 seconds
 include         lmp.param
 # bonds
 bond_style      harmonic
@@ -119,4 +119,4 @@ pair_coeff 3 3 0.0013009 2.5 # H
 pair_modify shift yes mix geometric
 
 log             lmp${L}.log
-log             lmp200.log
+log             lmp156.log
