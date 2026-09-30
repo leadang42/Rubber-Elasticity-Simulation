@@ -1,40 +1,60 @@
+"""Langevin dynamics of polyisoprene fragments with the MACE-OFF machine-learned force field.
+
+    python exercises/exercises.py 1    # repeat unit at 100, 300, 500 and 700 K
+    python exercises/exercises.py 3    # stretching a hexamer
+
+Each run is defined by a YAML file in configs/ and writes its trajectory, distance
+record and plots to <base_directory>/<experiment_name>/ (simulations/ by default).
+"""
+
+import argparse
+from pathlib import Path
+
 from ase.data.pubchem import pubchem_atoms_search
 from mace.calculators import mace_off
-from simulation import SimulationConfig, MolecularDynamics
-from analysis import analyze_distances, analyze_stretches, get_direction_vector
 
-def exercise_1():
-    isoprene = pubchem_atoms_search(smiles="CC=C(C)C")
-    isoprene.calc = mace_off(model="medium", device='cpu') 
-    
-    temps = [500, 700]
-    
-    for temp in temps: 
-        config_path = f"simulations/ex1_dynamics_10000s_{temp}K/config.yaml"
-        simulation_path = f"simulations/ex1_dynamics_10000s_{temp}K"
-        
-        simulation = MolecularDynamics(isoprene, SimulationConfig.from_yaml(config_path))
-        simulation.run()
-        
-        analyze_distances(simulation_path)
-        analyze_stretches(simulation_path)
-    
-def exercise_2():
-    polyisoprene = pubchem_atoms_search(smiles="CC=C(C)CCC=C(C)CCC=C(C)CCC=C(C)CCC=C(C)CCC=C(C)C")
-    polyisoprene.calc = mace_off(model="medium", device='cpu') 
+from analysis import analyze_distances, analyze_stretches
+from simulation import MolecularDynamics, SimulationConfig
 
-def exercise_3():
-    polyisoprene = pubchem_atoms_search(smiles="CC=C(C)CCC=C(C)CCC=C(C)CCC=C(C)CCC=C(C)CCC=C(C)C")
-    polyisoprene.calc = mace_off(model="medium", device='cpu') 
+CONFIG_DIR = Path(__file__).resolve().parent / "configs"
 
-    config = SimulationConfig.from_yaml("simulations/ex3_1000_steps_cumulative_stretching_pos2fixed/config.yaml")
-    simulation = MolecularDynamics(polyisoprene, config)
+# Hydrogen-terminated polyisoprene repeat unit, and a hexamer of it
+MONOMER_SMILES = "CC=C(C)C"
+HEXAMER_SMILES = "CC=C(C)CCC=C(C)CCC=C(C)CCC=C(C)CCC=C(C)CCC=C(C)C"
+
+
+def load_molecule(smiles):
+    """Fetch a structure from PubChem and attach the MACE-OFF calculator."""
+    molecule = pubchem_atoms_search(smiles=smiles)
+    molecule.calc = mace_off(model="medium", device='cpu')
+    return molecule
+
+
+def run_simulation(smiles, config_name):
+    """Run configs/<config_name>.yaml on a freshly loaded molecule and plot the results."""
+    config = SimulationConfig.from_yaml(CONFIG_DIR / f"{config_name}.yaml")
+    simulation = MolecularDynamics(load_molecule(smiles), config)
     simulation.run()
 
+    analyze_distances(simulation.output_dir)
+    analyze_stretches(simulation.output_dir)
+
+
+def exercise_1(temperatures=(100, 300, 500, 700)):
+    """Dynamics of a single repeat unit at different temperatures."""
+    for temp in temperatures:
+        run_simulation(MONOMER_SMILES, f"ex1_dynamics_10000s_{temp}K")
+
+
+def exercise_3():
+    """Stretching a hexamer, with a fixed stretch step and with a cumulative one."""
+    run_simulation(HEXAMER_SMILES, "ex3_stretch_linear_1000s_pos1fixed")
+    run_simulation(HEXAMER_SMILES, "ex3_stretch_cumulative_1000s_pos1pos2fixed")
+
+
 if __name__ == '__main__':
-    
-    exercise_1()
-    
-    # simulation_path = "simulations/ex3_1000_steps_stretching"
-    # analyze_distances(simulation_path)
-    # analyze_stretches(simulation_path)
+    parser = argparse.ArgumentParser(description="Run the ASE + MACE-OFF exercises.")
+    parser.add_argument("exercise", type=int, choices=[1, 3], help="exercise to run")
+    args = parser.parse_args()
+
+    {1: exercise_1, 3: exercise_3}[args.exercise]()

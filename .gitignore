@@ -1,5 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
 venv/
+.venv/
+
+# macOS
+.DS_Store
+
+# LAMMPS output (written to lammps/ by run_lammps.sh)
+lammps/log.lammps
+lammps/lmp*.log
+lammps/lmp*.forces
+lammps/lmp*.xyz
+
+# Simulation results
 simulations/
-lammps/
+exercises/results*/
 archive/
-exercises/results_

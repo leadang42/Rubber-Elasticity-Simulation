@@ -1,0 +1,26 @@
+experiment_name: ex3_stretch_cumulative_1000s_pos1pos2fixed
+base_directory: simulations
+random_seed: 1
+
+dynamics:
+  temp: 300
+  friction: 0.01
+
+time:
+  timestep: 0.5
+  steps: 1000
+  write_interval: 10
+
+atoms:
+  position1:
+    index: 27
+    fixed: true
+  position2:
+    index: 29
+    fixed: true
+
+stretching:
+  enable: true
+  cumulative: true
+  amount: 0.02
+  interval: 10

@@ -1,0 +1,26 @@
+experiment_name: ex1_dynamics_10000s_500K
+base_directory: simulations
+random_seed: 39
+
+dynamics:
+  temp: 500
+  friction: 0.01
+
+time:
+  timestep: 0.5
+  steps: 10000
+  write_interval: 10
+
+atoms:
+  position1:
+    index: 8
+    fixed: false
+  position2:
+    index: 13
+    fixed: false
+
+stretching:
+  enable: false
+  cumulative: false
+  amount: 0
+  interval: 0
