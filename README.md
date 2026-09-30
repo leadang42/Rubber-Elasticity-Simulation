@@ -38,7 +38,8 @@ energetic contribution $\partial U/\partial L$ from the entropic one $-T\,\parti
 │   ├── simulation.py        Langevin MD driver with optional stretching
 │   ├── analysis.py          distance, stretch and force analysis of trajectories
 │   └── configs/             one YAML file per simulation
-└── requirements.txt
+├── requirements.txt
+└── LICENSE
 ```
 
 ## Installation
@@ -188,3 +189,13 @@ Each simulation is described by a YAML file in `exercises/configs/`:
 
 Each output directory contains `positions.xyz` (an extended XYZ trajectory including forces),
 `distances.csv`, `stretches.csv` (only for stretching runs) and plots in `plots/`.
+
+## Acknowledgements
+
+This project was completed as coursework. The LAMMPS input deck in `lammps/` (`lmp.input`,
+`lmp.param` and `lmp.data`) is adapted from the template provided with the course.
+
+## License
+
+The code in this repository is released under the [MIT License](LICENSE). The course material
+in `lammps/` is not covered by this license.
