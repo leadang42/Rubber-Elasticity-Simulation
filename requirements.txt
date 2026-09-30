@@ -1,5 +1,10 @@
-mace-torch
-torch-dftd
+# LAMMPS post-processing (analysis/)
+numpy
+matplotlib
+pyyaml
 statsmodels
+
+# ASE + MACE-OFF exercises (exercises/)
 ase
-seaborn
+mace-torch
+pandas
