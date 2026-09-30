@@ -130,10 +130,16 @@ editing `lmp.input` for the next campaign.
 For every *L*, `analyze` takes the restoring force $f = f_x^\mathrm{head} - f_x^\mathrm{tail}$
 from the production forces and the potential energy from the production part of the log. The
 plots call the potential energy "internal energy": at fixed temperature the mean kinetic energy
-is constant, so changes in *U* come from the potential energy alone. The error bar of each mean
-comes from the integrated autocorrelation time, which sums the normalised autocorrelation
-function up to lag `M` (in samples). Choose `M` where `acf_plot.png` has decayed into noise.
-The values used for each campaign are recorded in `analysis/experiments.py`.
+is constant, so changes in *U* come from the potential energy alone.
+
+Consecutive samples are correlated, so the error bar of each mean is $\sigma\sqrt{2\tau/N}$.
+Here $\sigma$ is the standard deviation of the $N$ samples, and
+$\tau = \tfrac{1}{2} + \sum_{k=1}^{M} \rho(k)$ is the integrated autocorrelation time in units
+of the sampling interval, where $\rho$ is the normalised autocorrelation function.
+$N/(2\tau)$ is the effective number of independent samples. Choose `M` where `acf_plot.png`
+has decayed into noise. The values used for each campaign are recorded in
+`analysis/experiments.py`. The output files report `tau_int` in MD steps, that is
+$\tau \times$ `tsamp`.
 
 Results are written to `simulations/`, which is not tracked by git:
 

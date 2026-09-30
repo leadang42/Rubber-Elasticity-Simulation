@@ -167,16 +167,16 @@ def autocorrelation(x):
     return acf(x, nlags=len(x) - 1, fft=True, adjusted=False)
 
 
-def integrated_autocorrelation_time(rho, tsamp, M):
-    """Integrated autocorrelation time in MD steps, summing the ACF up to lag M."""
+def integrated_autocorrelation_time(rho, M):
+    """Integrated autocorrelation time in samples, summing the ACF up to lag M."""
     M = min(M, len(rho) - 1)
-    return (0.5 + np.sum(rho[1:M + 1])) * tsamp
+    return 0.5 + np.sum(rho[1:M + 1])
 
 
 def analyze_series(series, quantity, L, tsamp, M):
     """Mean, standard deviation and correlation-corrected error bar of a time series."""
     rho = autocorrelation(series)
-    tau_int = integrated_autocorrelation_time(rho, tsamp, M)
+    tau = integrated_autocorrelation_time(rho, M)
     std = np.std(series)
     N = len(series)
 
@@ -184,9 +184,9 @@ def analyze_series(series, quantity, L, tsamp, M):
         "displacement": L,
         f"mean_{quantity}": float(np.mean(series)),
         f"std_{quantity}": float(std),
-        "error_bar": float(np.sqrt(2 * tau_int / N) * std),
-        "tau_int": float(tau_int),
-        "N_eff": float(N / (2 * tau_int)),
+        "error_bar": float(np.sqrt(2 * tau / N) * std),
+        "tau_int": float(tau * tsamp),  # in MD steps
+        "N_eff": float(N / (2 * tau)),
         "mean_acf": float(np.mean(rho)),
         "M": M,
     }
